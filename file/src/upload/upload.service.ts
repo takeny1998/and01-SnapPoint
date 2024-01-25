@@ -17,9 +17,13 @@ import { UploadFileEndResponsetDto } from './dtos/upload-file-end.response.dto';
 export class UploadService {
   constructor(private readonly bucketService: BucketService) {}
 
-  async uploadFile(file: Express.Multer.File): Promise<UploadedFileDto> {
-    const fileUuid = randomUUID();
-    file.filename = fileUuid;
+  async uploadFile(dto: {
+    uuid: string;
+    file: Express.Multer.File;
+  }): Promise<UploadedFileDto> {
+    const { uuid, file } = dto;
+    file.filename = uuid;
+
     const uploadedFile = await this.bucketService.uploadFile(file);
 
     return UploadedFileDto.of({

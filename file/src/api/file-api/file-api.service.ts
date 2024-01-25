@@ -3,6 +3,7 @@ import { FileService } from '@/domain/file/file.service';
 import { UploadService } from '@/upload/upload.service';
 import { Injectable } from '@nestjs/common';
 import { UploadedFileDto } from './dto/uploaded-file.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class FileApiService {
@@ -12,7 +13,9 @@ export class FileApiService {
   ) {}
 
   async uploadImage(file: Express.Multer.File, user: UserPayload) {
-    const uploadedFile = await this.uploadService.uploadFile(file);
+    const uuid = randomUUID();
+
+    const uploadedFile = await this.uploadService.uploadFile({ uuid, file });
     const { uuid: userUuid } = user;
 
     const createdFile = await this.fileService.createFile({
