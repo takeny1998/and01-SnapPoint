@@ -36,6 +36,7 @@
 
 # Keep environment variables out of version control
 backend/**/migrations
+file/**/migrations
 */.env
 /.idea/
 
