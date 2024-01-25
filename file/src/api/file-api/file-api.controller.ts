@@ -29,13 +29,17 @@ import { JwtAuthGuard } from '@/common/guards/jwt.guard';
 import { UploadFileURLDto } from '@/upload/dtos/upload-file-url.dto';
 import { UploadFileEndDto } from '@/upload/dtos/upload-file-end.dto';
 import { UploadFileAbortDto } from '@/upload/dtos/upload-file-abort.dto';
+import { FileApiService } from './file-api.service';
+import { AuthRequest } from '@/common/guards/auth-request.interface';
 
 @ApiTags('files')
 @Controller('files')
 export class FileApiController {
   constructor(
+    private readonly fileApiService: FileApiService,
     private readonly uploadService: UploadService,
     @Inject('DATA_SERVICE') private readonly client: ClientProxy,
+    @Inject('MEDIA_SERVICE') private readonly mediaService: ClientProxy,
   ) {}
 
   @Post('/image')
@@ -70,15 +74,16 @@ export class FileApiController {
         }),
     )
     file: Express.Multer.File,
-    @Req() req: any,
+    @Req() req: AuthRequest,
   ) {
-    const uploadedFileDto = await this.uploadService.uploadFile(file);
+    const uploadedImage = await this.fileApiService.uploadImage(file, req.user);
 
-    this.client.emit(
-      { cmd: 'create_image_data' },
-      { ...uploadedFileDto, userUuid: req.user.uuid },
+    this.mediaService.emit(
+      { cmd: 'process_image' },
+      { uuid: uploadedImage.uuid },
     );
-    return uploadedFileDto;
+
+    return uploadedImage;
   }
 
   @Get('/video-start')

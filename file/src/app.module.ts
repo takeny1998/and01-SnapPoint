@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { UploadModule } from './upload/upload.module';
 import { ApiModule } from './api/api.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -9,6 +9,7 @@ import { HealthModule } from './common/health/health.module';
 import { PrismaService } from './common/datasources/prisma.service';
 import { FileModule } from './domain/file/file.module';
 
+@Global()
 @Module({
   imports: [
     ConfigModule.forRoot({
