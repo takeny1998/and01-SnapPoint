@@ -3,10 +3,12 @@ import { UploadModule } from '@/upload/upload.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { FileApiController } from './file-api/file-api.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { FileModule } from '@/domain/file/file.module';
 
 @Module({
   imports: [
     UploadModule,
+    FileModule,
     ClientsModule.registerAsync([
       {
         name: 'DATA_SERVICE',

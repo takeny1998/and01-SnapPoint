@@ -7,6 +7,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '@/common/strategies/jwt.strategy';
 import { HealthModule } from './common/health/health.module';
 import { PrismaService } from './common/datasources/prisma.service';
+import { FileModule } from './domain/file/file.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PrismaService } from './common/datasources/prisma.service';
     UploadModule,
     ApiModule,
     PassportModule,
+    FileModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
