@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '@/common/strategies/jwt.strategy';
 import { HealthModule } from './common/health/health.module';
+import { PrismaService } from './common/datasources/prisma.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HealthModule } from './common/health/health.module';
     HealthModule,
   ],
   controllers: [],
-  providers: [JwtStrategy],
+  providers: [JwtStrategy, PrismaService],
+  exports: [PrismaService],
 })
 export class AppModule {}
