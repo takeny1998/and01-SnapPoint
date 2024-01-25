@@ -32,12 +32,6 @@ model Post {
   isDeleted   Boolean  @default(false)
 }
 
-model Like {
-  id       Int        @id @default(autoincrement())
-  userUuid String
-  postUuid String
-}
-
 model Block {
   id          Int      @id @default(autoincrement())
   uuid        String   @unique @default(uuid())
