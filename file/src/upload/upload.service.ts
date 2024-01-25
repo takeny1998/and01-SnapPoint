@@ -5,13 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BucketService } from './storages/bucket.service';
-import { randomUUID } from 'crypto';
 import { UploadedFileDto } from './dtos/uploaded-file.dto';
 import { UploadFileURLDto } from './dtos/upload-file-url.dto';
 import { UploadFileEndDto } from './dtos/upload-file-end.dto';
 import { UploadFileAbortDto } from './dtos/upload-file-abort.dto';
 import { UploadFileStartResponseDto } from './dtos/upload-file-start.response.dto';
 import { UploadFileEndResponsetDto } from './dtos/upload-file-end.response.dto';
+import { StartMultiPartUploadDto } from './dtos/start-multi-part-upload.dto';
 
 @Injectable()
 export class UploadService {
@@ -27,47 +27,47 @@ export class UploadService {
     const uploadedFile = await this.bucketService.uploadFile(file);
 
     return UploadedFileDto.of({
-      uuid: fileUuid,
+      uuid,
       url: uploadedFile.Location,
       mimeType: file.mimetype,
     });
   }
 
-  async uploadVideoStart(
-    contentType: string,
-  ): Promise<UploadFileStartResponseDto> {
-    const fileUuid = randomUUID();
+  async startMultipartUpload(dto: StartMultiPartUploadDto) {
+    const { uuid, contentType } = dto;
+
     const filePart = await this.bucketService.createMultipartUpload(
-      fileUuid,
+      uuid,
       contentType,
     );
 
-    if (!filePart.Key || !filePart.UploadId) {
+    const { Key: key, UploadId: uploadId } = filePart;
+
+    if (!key || !uploadId) {
       throw new InternalServerErrorException('파일 저장 시작에 실패했습니다.');
     }
 
-    return UploadFileStartResponseDto.of(filePart.Key, filePart.UploadId);
+    return UploadFileStartResponseDto.of(key, uploadId);
   }
 
-  async getPresignedUrl(
-    uploadFileURLDto: UploadFileURLDto,
+  async getMultipartUploadUrl(
+    dto: UploadFileURLDto,
   ): Promise<{ presignedUrl: string }> {
+    const { key, uploadId, partNumber } = dto;
+
     const presignedUrl = await this.bucketService.getPresignedUrl(
-      uploadFileURLDto.key,
-      uploadFileURLDto.uploadId,
-      uploadFileURLDto.partNumber,
+      key,
+      uploadId,
+      partNumber,
     );
 
-    return {
-      presignedUrl: presignedUrl,
-    };
+    return { presignedUrl };
   }
 
-  async uploadFilePartComplete(
+  async completeMultipartUpload(
     uploadFilePartDto: UploadFileEndDto,
   ): Promise<UploadFileEndResponsetDto> {
     const { key, uploadId, parts, mimeType } = uploadFilePartDto;
-    console.log(uploadFilePartDto);
 
     try {
       await this.bucketService.listParts(key, uploadId);
@@ -95,7 +95,7 @@ export class UploadService {
     return UploadFileEndResponsetDto.of(key, completeUpload.Location, mimeType);
   }
 
-  async uploadFilePartAbort(uploadFileAbortDto: UploadFileAbortDto) {
+  async abortMultipartUpload(uploadFileAbortDto: UploadFileAbortDto) {
     const { uploadId, key } = uploadFileAbortDto;
 
     return await this.bucketService.abortMultipartUpload(key, uploadId);

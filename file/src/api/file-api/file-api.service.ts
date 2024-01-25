@@ -4,6 +4,9 @@ import { UploadService } from '@/upload/upload.service';
 import { Injectable } from '@nestjs/common';
 import { UploadedFileDto } from './dto/uploaded-file.dto';
 import { randomUUID } from 'crypto';
+import { UploadFileURLDto } from './dto/upload-file-url.dto';
+import { UploadFileEndDto } from '@/upload/dtos/upload-file-end.dto';
+import { UploadFileAbortDto } from '@/upload/dtos/upload-file-abort.dto';
 
 @Injectable()
 export class FileApiService {
@@ -26,5 +29,32 @@ export class FileApiService {
     return UploadedFileDto.of(createdFile);
   }
 
-  async startUploadVideo() {}
+  async startUploadVideo(contentType: string) {
+    const uuid = randomUUID();
+
+    return this.uploadService.startMultipartUpload({
+      uuid,
+      contentType,
+    });
+  }
+
+  async getUploadVideoUrl(dto: UploadFileURLDto) {
+    return this.uploadService.getMultipartUploadUrl(dto);
+  }
+
+  async completeUploadVideo(dto: UploadFileEndDto, user: UserPayload) {
+    const uploadedVideo = await this.uploadService.completeMultipartUpload(dto);
+    const { uuid: userUuid } = user;
+
+    const createdFile = await this.fileService.createFile({
+      ...uploadedVideo,
+      userUuid,
+    });
+
+    return UploadedFileDto.of(createdFile);
+  }
+
+  async abortMultipartUpload(dto: UploadFileAbortDto) {
+    return this.uploadService.abortMultipartUpload(dto);
+  }
 }

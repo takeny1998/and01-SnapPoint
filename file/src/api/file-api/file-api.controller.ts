@@ -11,7 +11,6 @@ import {
   Get,
   Body,
   Query,
-  Logger,
 } from '@nestjs/common';
 
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -38,7 +37,6 @@ export class FileApiController {
   constructor(
     private readonly fileApiService: FileApiService,
     private readonly uploadService: UploadService,
-    @Inject('DATA_SERVICE') private readonly client: ClientProxy,
     @Inject('MEDIA_SERVICE') private readonly mediaService: ClientProxy,
   ) {}
 
@@ -108,7 +106,7 @@ export class FileApiController {
   })
   @UseGuards(JwtAuthGuard)
   async uploadVideo(@Query('contentType') contentType: string) {
-    return await this.uploadService.uploadVideoStart(contentType);
+    return this.fileApiService.startUploadVideo(contentType);
   }
 
   @Post('/video-url')
@@ -132,8 +130,8 @@ export class FileApiController {
     },
   })
   @UseGuards(JwtAuthGuard)
-  async getPresignedUrl(@Body() uploadFileURLDto: UploadFileURLDto) {
-    return await this.uploadService.getPresignedUrl(uploadFileURLDto);
+  async getUploadVideoUrl(@Body() dto: UploadFileURLDto) {
+    return this.fileApiService.getUploadVideoUrl(dto);
   }
 
   @Post('/video-end')
@@ -157,21 +155,21 @@ export class FileApiController {
     },
   })
   @UseGuards(JwtAuthGuard)
-  async uploadFilePartComplete(
-    @Body() uploadFilePartDto: UploadFileEndDto,
-    @Req() req,
+  async completeUploadVideo(
+    @Body() dto: UploadFileEndDto,
+    @Req() req: AuthRequest,
   ) {
-    const uploadFileEndResponsetDto =
-      await this.uploadService.uploadFilePartComplete(uploadFilePartDto);
-
-    Logger.debug(`${uploadFilePartDto.key} ended`);
-
-    this.client.emit(
-      { cmd: 'video.create' },
-      { ...uploadFileEndResponsetDto, userUuid: req.user.uuid },
+    const uploadedVideo = await this.fileApiService.completeUploadVideo(
+      dto,
+      req.user,
     );
 
-    return uploadFileEndResponsetDto;
+    this.mediaService.emit(
+      { cmd: 'video.process' },
+      { uuid: uploadedVideo.uuid },
+    );
+
+    return uploadedVideo;
   }
 
   @Post('/video-abort')
@@ -183,7 +181,7 @@ export class FileApiController {
     type: UploadFileAbortDto,
   })
   @UseGuards(JwtAuthGuard)
-  async uploadFilePartAbort(@Body() uploadFileAbortDto: UploadFileAbortDto) {
-    return await this.uploadService.uploadFilePartAbort(uploadFileAbortDto);
+  async uploadFilePartAbort(@Body() dto: UploadFileAbortDto) {
+    return await this.fileApiService.abortMultipartUpload(dto);
   }
 }
