@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { BlockModule } from './domain/block/block.module';
 import { PostModule } from './domain/post/post.module';
-import { FileModule } from './domain/file/file.module';
 import { UserModule } from './domain/user/user.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TokenModule } from './domain/token/token.module';
@@ -39,7 +38,6 @@ import { UtilityModule } from './common/utility/utility.module';
     BlockModule,
     PostModule,
     UserModule,
-    FileModule,
     JwtModule,
     TokenModule,
     ApiModule,

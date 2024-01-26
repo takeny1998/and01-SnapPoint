@@ -1,15 +1,13 @@
 import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PostService } from '@/domain/post/post.service';
 import { BlockService } from '@/domain/block/block.service';
-import { FileService } from '@/domain/file/file.service';
 import { ValidationService } from '@/api/validation/validation.service';
 import { PostDto } from '@/domain/post/dtos/post.dto';
-import { Block, File, Post } from '@prisma/client';
+import { Block, Post } from '@prisma/client';
 import { TransformationService } from '@/api/transformation/transformation.service';
 import { FindNearbyPostQuery } from './dtos/find-nearby-post.query.dto';
 import { RedisCacheService } from '@/common/redis/redis-cache.service';
 import { FindBlocksByPostDto } from '@/domain/block/dtos/find-blocks-by-post.dto';
-import { FindFilesBySourceDto } from '@/domain/file/dtos/find-files-by-source.dto';
 import { UserService } from '@/domain/user/user.service';
 import { Transactional } from '@takeny1998/nestjs-prisma-transactional';
 import { WritePostDto } from './dtos/post/write-post.dto';
@@ -17,18 +15,20 @@ import { ModifyPostDto } from './dtos/post/modify-post.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { SummaryPostDto } from '../summarization/dtos/summary-post.dto';
 import { UserPayload } from '@/common/guards/user-payload.interface';
+import { firstValueFrom, take } from 'rxjs';
+import { File } from './dtos/file.entity';
 
 @Injectable()
 export class PostApiService {
   constructor(
     private readonly postService: PostService,
     private readonly blockService: BlockService,
-    private readonly fileService: FileService,
     private readonly userService: UserService,
     private readonly validation: ValidationService,
     private readonly transform: TransformationService,
     private readonly redisService: RedisCacheService,
     @Inject('SUMMARY_SERVICE') private readonly summaryService: ClientProxy,
+    @Inject('FILE_SERVICE') private readonly fileService: ClientProxy,
   ) {}
 
   async findEntireBlocksWithPost(posts: Post[]): Promise<Block[][]> {
@@ -79,12 +79,12 @@ export class PostApiService {
       keys,
       (value) => JSON.parse(value),
       async (keys) => {
-        const dtos: FindFilesBySourceDto[] = keys.map((key) => {
+        const dtos = keys.map((key) => {
           const uuid = key.substring('file:'.length);
-          return { uuid: uuid };
+          return { source: 'block', sourceUuid: uuid };
         });
 
-        const findFiles = await this.fileService.findFilesBySources('block', dtos);
+        const findFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.find.attach' }, dtos));
 
         const fileByUuid = {};
 
@@ -100,10 +100,10 @@ export class PostApiService {
         });
 
         const resultArray = dtos.map((dto) => {
-          if (!fileByUuid[dto.uuid]) {
+          if (!fileByUuid[dto.sourceUuid]) {
             return [];
           }
-          return fileByUuid[dto.uuid];
+          return fileByUuid[dto.sourceUuid];
         });
 
         return resultArray;
@@ -161,8 +161,10 @@ export class PostApiService {
 
     // 2. 게시글과 연관된 블록들을 찾는다.
     const blocks = await this.blockService.findBlocksByPost({ postUuid: post.uuid });
+
     // 3. 블록들과 연관된 파일들을 찾는다.
-    const files = await this.fileService.findFilesBySources('block', blocks);
+    const findFileDtos = blocks.map(({ uuid }) => ({ source: 'block', sourceUuid: uuid }));
+    const files = await firstValueFrom(this.fileService.send({ cmd: 'files.attached.find' }, findFileDtos));
 
     return this.transform.assemblePost(post, user, blocks, files);
   }
@@ -176,22 +178,19 @@ export class PostApiService {
     // 게시글의 블록, 파일을 각각 검사한다.
     await Promise.all([
       this.validation.validateCreateBlocks(blocks, files),
-      this.validation.validateFiles(files, user.uuid),
+      // this.validation.validateFiles(files, user.uuid),
     ]);
 
-    // 게시글, 블록, 파일 생성을 비동기 병렬 처리한다.
-    const [createdPost, createdBlocks, createdFiles] = await Promise.all([
-      this.postService.createPost(user.uuid, post),
-      this.blockService.createBlocks(post.uuid, blocks),
-      this.fileService.attachFiles(files),
-    ]);
+    const createdPost = await this.postService.createPost(user.uuid, post);
+    const createdBlocks = await this.blockService.createBlocks(post.uuid, blocks);
+    const createdFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.attach' }, files));
 
     // Redis 캐시 정보를 삭제한다.
     await this.redisService.del(`block:${post.uuid}`);
     const deleteCacheKeys = blocks.map((block) => `file:${block.uuid}`);
     await this.redisService.del(deleteCacheKeys);
 
-    this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: createdPost, blocks: createdBlocks });
+    // this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: createdPost, blocks: createdBlocks });
 
     return this.transform.assemblePost(createdPost, user, createdBlocks, createdFiles);
   }
@@ -202,14 +201,15 @@ export class PostApiService {
     const { post, blocks, files } = decomposedPostDto;
 
     await this.validation.validatePost({ uuid, userUuid: user.uuid });
-
     await this.validation.validateModifyBlocks(uuid, blocks, files);
 
-    const [updatedPost, updatedBlocks, updatedFiles] = await Promise.all([
-      this.postService.updatePost({ where: { uuid }, data: post }),
-      this.blockService.modifyBlocks(uuid, blocks),
-      this.fileService.modifyFiles(files),
-    ]);
+    const fileUuids = files.map(({ uuid }) => uuid);
+    const blockUuids = blocks.map(({ uuid }) => uuid);
+    const modifyFileDto = { sourceUuids: blockUuids, uuids: fileUuids };
+
+    const updatedPost = await this.postService.updatePost({ where: { uuid }, data: post });
+    const updatedBlocks = await this.blockService.modifyBlocks(uuid, blocks);
+    const updatedFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.attached.modify' }, modifyFileDto));
 
     await this.redisService.del(`file:${uuid}`);
     await this.redisService.del(`block:${uuid}`);
@@ -228,7 +228,8 @@ export class PostApiService {
 
     const deletedPost = await this.postService.deletePost({ uuid });
     const deletedBlocks = await this.blockService.deleteBlocksByPost(uuid);
-    const deletedFiles = await this.fileService.deleteFilesBySources('block', deletedBlocks);
+    const blockUuids = deletedBlocks.map(({ uuid }) => uuid);
+    const deletedFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.attached.delete' }, blockUuids));
 
     const willDeleteFileKeys = deletedBlocks.map(({ uuid }) => `file:${uuid}`);
     await Promise.all([this.redisService.del(`block:${uuid}`), this.redisService.del(willDeleteFileKeys)]);

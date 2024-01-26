@@ -1,9 +1,10 @@
+import { firstValueFrom } from 'rxjs';
 import { PostService } from '@/domain/post/post.service';
-import { FileService } from '@/domain/file/file.service';
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,13 +15,14 @@ import { ValidatePostDto } from './dtos/validate-post.dto';
 import { UtilityService } from '@/common/utility/utility.service';
 import { BlockService } from '@/domain/block/block.service';
 import { Block } from '@prisma/client';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class ValidationService {
   constructor(
     private readonly postService: PostService,
     private readonly blockService: BlockService,
-    private readonly fileService: FileService,
+    @Inject('FILE_SERVICE') private readonly fileService: ClientProxy,
     private readonly utils: UtilityService,
   ) {}
 
@@ -39,8 +41,9 @@ export class ValidationService {
   }
 
   async validateFiles(fileDtos: ValidateFileDto[], userUuid: string) {
-    const fileWhereInputs = fileDtos.map((fileDto) => ({ uuid: fileDto.uuid }));
-    const existFiles = await this.fileService.findFilesById(fileWhereInputs);
+    const fileUuids = fileDtos.map(({ uuid }) => uuid);
+
+    const existFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.find' }, fileUuids));
 
     const existFileUuidSet = new Set(existFiles.map((existFile) => existFile.uuid));
 
