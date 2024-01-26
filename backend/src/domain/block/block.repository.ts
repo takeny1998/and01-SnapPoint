@@ -42,9 +42,9 @@ export class BlockRepository {
 
     const upsertPromises = data.map((block) =>
       this.prisma.block.upsert({
-        where: { uuid: block.uuid, isDeleted: false },
-        update: block,
+        where: { uuid: block.uuid },
         create: block,
+        update: block,
       }),
     );
 

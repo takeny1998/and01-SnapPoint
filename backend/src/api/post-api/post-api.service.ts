@@ -203,9 +203,9 @@ export class PostApiService {
     await this.validation.validatePost({ uuid, userUuid: user.uuid });
     await this.validation.validateModifyBlocks(uuid, blocks, files);
 
-    const fileUuids = files.map(({ uuid }) => uuid);
+    const fileDtos = files.map(({ uuid, sourceUuid }) => ({ uuid, sourceUuid }));
     const blockUuids = blocks.map(({ uuid }) => uuid);
-    const modifyFileDto = { sourceUuids: blockUuids, uuids: fileUuids };
+    const modifyFileDto = { sourceUuids: blockUuids, files: fileDtos };
 
     const updatedPost = await this.postService.updatePost({ where: { uuid }, data: post });
     const updatedBlocks = await this.blockService.modifyBlocks(uuid, blocks);

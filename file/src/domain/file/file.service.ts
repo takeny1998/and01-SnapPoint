@@ -44,7 +44,7 @@ export class FileService {
   }
 
   async modifyAttachFiles(dto: ModifyAttachFileDto) {
-    const { sourceUuids, uuids } = dto;
+    const { sourceUuids, files } = dto;
 
     // 1. 해당되는 첨부 파일을 soft delete 한다.
     await this.prisma.file.updateMany({
@@ -53,14 +53,14 @@ export class FileService {
     });
 
     // 2. 파일을 모두 업데이트한다.
-    this.prisma.file.updateMany({
-      where: { uuid: { in: uuids } },
-      data: { isDeleted: false },
-    });
+    const updatePromises = files.map(({ uuid, sourceUuid }) =>
+      this.prisma.file.update({
+        where: { uuid },
+        data: { sourceUuid, isDeleted: false },
+      }),
+    );
 
-    return this.prisma.file.findMany({
-      where: { uuid: { in: uuids }, isDeleted: false },
-    });
+    return Promise.all(updatePromises);
   }
 
   async deleteAttachFiles(sourceUuid: string): Promise<void> {

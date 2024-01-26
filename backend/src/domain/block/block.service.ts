@@ -41,7 +41,7 @@ export class BlockService {
   async modifyBlocks(postUuid: string, dtos: UpsertBlockDto[]): Promise<Block[]> {
     await this.repository.deleteMany({ where: { postUuid } });
 
-    const data = dtos.map((dto) => ({ ...dto, postUuid }));
+    const data = dtos.map((dto) => ({ ...dto, postUuid, isDeleted: false }));
     return this.repository.upsertMany({ data });
   }
 
