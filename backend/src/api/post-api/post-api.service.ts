@@ -15,7 +15,7 @@ import { ModifyPostDto } from './dtos/post/modify-post.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { SummaryPostDto } from '../summarization/dtos/summary-post.dto';
 import { UserPayload } from '@/common/guards/user-payload.interface';
-import { firstValueFrom, take } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { File } from './dtos/file.entity';
 
 @Injectable()
