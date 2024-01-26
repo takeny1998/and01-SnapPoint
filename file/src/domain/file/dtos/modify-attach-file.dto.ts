@@ -1,3 +1,5 @@
-export class ModifytAttachFileDto {
-  readonly uuid: string;
+export class ModifyAttachFileDto {
+  readonly sourceUuids: string[];
+
+  readonly uuids: string[];
 }
