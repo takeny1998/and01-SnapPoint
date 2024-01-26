@@ -24,24 +24,6 @@ import { TokenModule } from '@/domain/token/token.module';
   imports: [
     ClientsModule.registerAsync([
       {
-        name: 'MEDIA_SERVICE',
-        imports: [ConfigModule],
-        useFactory: async (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [configService.getOrThrow<string>('RMQ_HOST')],
-            queue: configService.getOrThrow<string>('RMQ_MEDIA_QUEUE'),
-            queueOptions: {
-              durable: true,
-            },
-          },
-        }),
-        inject: [ConfigService],
-      },
-    ]),
-
-    ClientsModule.registerAsync([
-      {
         name: 'SUMMARY_SERVICE',
         imports: [ConfigModule],
         useFactory: async (configService: ConfigService) => ({
