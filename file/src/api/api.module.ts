@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { UploadModule } from '@/upload/upload.module';
+import { UploadModule } from '@/domain/upload/upload.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { FileApiController } from './file-api/file-api.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';

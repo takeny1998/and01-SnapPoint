@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { UploadModule } from './upload/upload.module';
+import { UploadModule } from './domain/upload/upload.module';
 import { ApiModule } from './api/api.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';

@@ -23,11 +23,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
-import { UploadService } from '@/upload/upload.service';
+import { UploadService } from '@/domain/upload/upload.service';
 import { JwtAuthGuard } from '@/common/guards/jwt.guard';
-import { UploadFileURLDto } from '@/upload/dtos/upload-file-url.dto';
-import { UploadFileEndDto } from '@/upload/dtos/upload-file-end.dto';
-import { UploadFileAbortDto } from '@/upload/dtos/upload-file-abort.dto';
+import { UploadFileURLDto } from '@/domain/upload/dtos/upload-file-url.dto';
+import { UploadFileEndDto } from '@/domain/upload/dtos/upload-file-end.dto';
+import { UploadFileAbortDto } from '@/domain/upload/dtos/upload-file-abort.dto';
 import { FileApiService } from './file-api.service';
 import { AuthRequest } from '@/common/guards/auth-request.interface';
 

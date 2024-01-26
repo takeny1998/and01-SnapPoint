@@ -1,12 +1,12 @@
 import { UserPayload } from '@/common/guards/user-payload.interface';
 import { FileService } from '@/domain/file/file.service';
-import { UploadService } from '@/upload/upload.service';
+import { UploadService } from '@/domain/upload/upload.service';
 import { Injectable } from '@nestjs/common';
 import { UploadedFileDto } from './dto/uploaded-file.dto';
 import { randomUUID } from 'crypto';
 import { UploadFileURLDto } from './dto/upload-file-url.dto';
-import { UploadFileEndDto } from '@/upload/dtos/upload-file-end.dto';
-import { UploadFileAbortDto } from '@/upload/dtos/upload-file-abort.dto';
+import { UploadFileEndDto } from '@/domain/upload/dtos/upload-file-end.dto';
+import { UploadFileAbortDto } from '@/domain/upload/dtos/upload-file-abort.dto';
 
 @Injectable()
 export class FileApiService {
