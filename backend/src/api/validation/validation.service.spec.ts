@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ValidationService } from './validation.service';
-import { FileService } from '@/domain/file/file.service';
 import { mockDeep } from 'jest-mock-extended';
 import { BadRequestException } from '@nestjs/common';
 import { ValidateFileDto } from './dtos/validate-file.dto';
@@ -9,10 +8,10 @@ import { PRISMA_SERVICE, PrismaService } from '@/common/databases/prisma.service
 import { PostService } from '@/domain/post/post.service';
 import { BlockService } from '@/domain/block/block.service';
 import { UtilityService } from '@/common/utility/utility.service';
+import { ClientProxy } from '@nestjs/microservices';
 
 describe('ValidationService', () => {
   let service: ValidationService;
-  // let fileService: DeepMockProxy<FileService>;
   let mockFileDto: ValidateFileDto;
   let mockBlockDto: ValidateBlockDto;
 
@@ -20,7 +19,6 @@ describe('ValidationService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ValidationService,
-        FileService,
         PostService,
         BlockService,
         UtilityService,
@@ -28,10 +26,12 @@ describe('ValidationService', () => {
           provide: PRISMA_SERVICE,
           useValue: mockDeep<PrismaService>(),
         },
+        {
+          provide: 'FILE_SERVICE',
+          useValue: mockDeep<ClientProxy>(),
+        },
       ],
     })
-      .overrideProvider(FileService)
-      .useValue(mockDeep<FileService>())
       .overrideProvider(PostService)
       .useValue(mockDeep<PostService>())
       .overrideProvider(BlockService)

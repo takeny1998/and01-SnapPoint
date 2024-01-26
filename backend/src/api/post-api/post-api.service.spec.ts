@@ -4,7 +4,6 @@ import { PostApiService } from './post-api.service';
 import { ValidationService } from '../validation/validation.service';
 import { PostService } from '@/domain/post/post.service';
 import { BlockService } from '@/domain/block/block.service';
-import { FileService } from '@/domain/file/file.service';
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { NotFoundException } from '@nestjs/common';
 import { TransformationService } from '../transformation/transformation.service';
@@ -25,7 +24,6 @@ describe('PostApiService', () => {
         PostApiService,
         PostService,
         BlockService,
-        FileService,
         UserService,
         ValidationService,
         TransformationService,
@@ -34,14 +32,16 @@ describe('PostApiService', () => {
           provide: 'SUMMARY_SERVICE',
           useValue: mockDeep<ClientProxy>(),
         },
+        {
+          provide: 'FILE_SERVICE',
+          useValue: mockDeep<ClientProxy>(),
+        },
       ],
     })
       .overrideProvider(PostService)
       .useValue(mockDeep<PostService>())
       .overrideProvider(BlockService)
       .useValue(mockDeep<BlockService>())
-      .overrideProvider(FileService)
-      .useValue(mockDeep<FileService>())
       .overrideProvider(UserService)
       .useValue(mockDeep<UserService>())
       .overrideProvider(RedisCacheService)
