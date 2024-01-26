@@ -11,7 +11,7 @@ export class FileEventListener {
 
   @MessagePattern({ cmd: 'files.attached.find' })
   async findAttachFiles(@Payload() dtos: FindAttachFileDto[]) {
-    return await this.fileService.findAttachFiles(dtos);
+    return this.fileService.findAttachFiles(dtos);
   }
 
   @MessagePattern({ cmd: 'files.attach' })
@@ -20,8 +20,8 @@ export class FileEventListener {
   }
 
   @MessagePattern({ cmd: 'files.attached.delete' })
-  async deleteAttachFiles(@Payload() sourceUuid: string) {
-    return this.fileService.deleteAttachFiles(sourceUuid);
+  async deleteAttachFiles(@Payload() sourceUuids: string[]) {
+    return this.fileService.deleteAttachFiles(sourceUuids);
   }
 
   @MessagePattern({ cmd: 'files.find' })

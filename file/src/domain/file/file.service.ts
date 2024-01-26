@@ -63,10 +63,16 @@ export class FileService {
     return Promise.all(updatePromises);
   }
 
-  async deleteAttachFiles(sourceUuid: string): Promise<void> {
+  async deleteAttachFiles(sourceUuids: string[]) {
+    const blocks = await this.prisma.file.findMany({
+      where: { sourceUuid: { in: sourceUuids }, isDeleted: false },
+    });
+
     await this.prisma.file.updateMany({
-      where: { sourceUuid, isDeleted: false },
+      where: { sourceUuid: { in: sourceUuids }, isDeleted: false },
       data: { isDeleted: true },
     });
+
+    return blocks;
   }
 }
