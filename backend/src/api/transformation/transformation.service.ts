@@ -12,9 +12,10 @@ import { ModifyPostDto } from '../post-api/dtos/post/modify-post.dto';
 import { UserPayload } from '@/common/guards/user-payload.interface';
 import { BlockDto } from '@/domain/block/dtos/block.dto';
 import { PostDto } from '@/domain/post/dtos/post.dto';
-import { Post, Block, File } from '@prisma/client';
+import { Post, Block } from '@prisma/client';
 import { FileDto } from '../post-api/dtos/file.dto';
 import { UtilityService } from '@/common/utility/utility.service';
+import { File } from '../post-api/dtos/file.entity';
 
 @Injectable()
 export class TransformationService {

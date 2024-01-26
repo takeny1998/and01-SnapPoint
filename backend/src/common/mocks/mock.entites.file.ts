@@ -1,4 +1,4 @@
-import { File } from '@prisma/client';
+import { File } from '@/api/post-api/dtos/file.entity';
 
 export const mockFileEntities: File[] = [
   {

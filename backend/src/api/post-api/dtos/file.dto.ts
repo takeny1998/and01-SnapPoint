@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { File } from '@prisma/client';
+import { File } from './file.entity';
 
 export class FileDto {
   @ApiProperty({ description: '파일의 고유 식별자를 나타냅니다.' })

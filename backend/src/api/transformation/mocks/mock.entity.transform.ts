@@ -1,5 +1,6 @@
+import { File } from '@/api/post-api/dtos/file.entity';
 import { UserPayload } from '@/common/guards/user-payload.interface';
-import { Post, Block, File } from '@prisma/client';
+import { Post, Block } from '@prisma/client';
 
 export const mockPost = (): Post => ({
   id: 1,
