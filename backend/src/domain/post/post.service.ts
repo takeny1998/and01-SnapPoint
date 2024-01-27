@@ -8,7 +8,9 @@ export class PostService {
   constructor(@Inject(PRISMA_SERVICE) private readonly prisma: PrismaService) {}
 
   async createPost(userUuid: string, dto: CreatePostDto) {
-    return this.prisma.post.create({ data: { ...dto, userUuid } });
+    const { uuid, title } = dto;
+
+    return this.prisma.post.create({ data: { uuid, title, userUuid } });
   }
 
   async findPost(postWhereUniqueInput: Prisma.PostWhereUniqueInput): Promise<Post | null> {
