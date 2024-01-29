@@ -11,38 +11,42 @@ generator client {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  uuid       String   @unique @default(uuid())
-  email      String   @unique
-  password   String
-  nickname   String
-  createdAt  DateTime @default(now())
-  modifiedAt DateTime @default(now())
-  isDeleted  Boolean  @default(false)  
+  id          Int      @id @default(autoincrement())
+  uuid        String   @unique @default(uuid())
+  email       String   @unique
+  password    String
+  nickname    String
+  createdAt   DateTime @default(now()) @map("created_at")
+  modifiedAt  DateTime @default(now()) @map("modified_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
 }
 
 model Post {
   id          Int      @id @default(autoincrement())
   uuid        String   @unique @default(uuid())
-  userUuid    String
+  userUuid    String   @map("user_uuid")
   title       String
   summary     String?
-  createdAt   DateTime @default(now())
-  modifiedAt  DateTime @default(now())
-  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  modifiedAt  DateTime @default(now()) @map("modified_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  @@index([userUuid])
 }
 
 model Block {
   id          Int      @id @default(autoincrement())
   uuid        String   @unique @default(uuid())
-  postUuid    String
+  postUuid    String   @map("post_uuid")
   type        String
   order       Int
   content     String
   latitude    Float?
   longitude   Float?
+  createdAt   DateTime @default(now()) @map("created_at")
+  modifiedAt  DateTime @default(now()) @map("modified_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
   @@index([latitude, longitude])
-  createdAt   DateTime @default(now())
-  modifiedAt  DateTime @default(now())
-  isDeleted   Boolean  @default(false)
+  @@index([postUuid])
 }
