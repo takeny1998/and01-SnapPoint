@@ -14,12 +14,12 @@ export class UserService {
   constructor(@Inject(PRISMA_SERVICE) private readonly prisma: PrismaService) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
-    const { uuid, email, password, nickname } = createUserDto;
+    const { email, password, nickname } = createUserDto;
 
     const hashedPassword = await this.hashPassword(password);
 
     return this.prisma.user.create({
-      data: { uuid, email, nickname, password: hashedPassword },
+      data: { email, nickname, password: hashedPassword },
     });
   }
 

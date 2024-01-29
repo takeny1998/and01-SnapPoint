@@ -178,12 +178,14 @@ export class PostApiService {
     // 게시글의 블록, 파일을 각각 검사한다.
     await Promise.all([
       this.validation.validateCreateBlocks(blocks, files),
-      // this.validation.validateFiles(files, user.uuid),
+      this.validation.validateFiles(files, user.uuid),
     ]);
 
-    const createdPost = await this.postService.createPost(user.uuid, post);
-    const createdBlocks = await this.blockService.createBlocks(post.uuid, blocks);
-    const createdFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.attach' }, files));
+    const [createdPost, createdBlocks, createdFiles] = await Promise.all([
+      this.postService.createPost(user.uuid, post),
+      this.blockService.createBlocks(post.uuid, blocks),
+      firstValueFrom(this.fileService.send({ cmd: 'files.attach' }, files)),
+    ]);
 
     // Redis 캐시 정보를 삭제한다.
     await this.redisService.del(`block:${post.uuid}`);
@@ -207,9 +209,11 @@ export class PostApiService {
     const blockUuids = blocks.map(({ uuid }) => uuid);
     const modifyFileDto = { sourceUuids: blockUuids, files: fileDtos };
 
-    const updatedPost = await this.postService.updatePost({ where: { uuid }, data: post });
-    const updatedBlocks = await this.blockService.modifyBlocks(uuid, blocks);
-    const updatedFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.attached.modify' }, modifyFileDto));
+    const [updatedPost, updatedBlocks, updatedFiles] = await Promise.all([
+      this.postService.updatePost({ where: { uuid }, data: post }),
+      this.blockService.modifyBlocks(uuid, blocks),
+      firstValueFrom(this.fileService.send({ cmd: 'files.attached.modify' }, modifyFileDto)),
+    ]);
 
     await this.redisService.del(`file:${uuid}`);
     await this.redisService.del(`block:${uuid}`);
@@ -228,6 +232,7 @@ export class PostApiService {
 
     const deletedPost = await this.postService.deletePost({ uuid });
     const deletedBlocks = await this.blockService.deleteBlocksByPost(uuid);
+
     const blockUuids = deletedBlocks.map(({ uuid }) => uuid);
     const deletedFiles = await firstValueFrom(this.fileService.send({ cmd: 'files.attached.delete' }, blockUuids));
 
