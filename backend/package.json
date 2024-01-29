@@ -35,7 +35,6 @@
     "@nestjs/swagger": "^7.1.16",
     "@nestjs/terminus": "^10.2.0",
     "@prisma/client": "^5.5.2",
-    "@takeny1998/nestjs-prisma-transactional": "^1.0.3",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.3",
     "axios": "^1.6.2",
@@ -50,7 +49,8 @@
     "passport-local": "^1.0.0",
     "redis": "^4.6.11",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@takeny1998/nestjs-prisma-transactional": "^1.0.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
