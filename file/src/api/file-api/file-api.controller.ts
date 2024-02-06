@@ -6,12 +6,9 @@ import {
   UseGuards,
   Req,
   Inject,
-  ParseFilePipeBuilder,
-  HttpStatus,
   Get,
   Body,
   Query,
-  Logger,
 } from '@nestjs/common';
 
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -24,19 +21,22 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
-import { UploadService } from '@/upload/upload.service';
+import { UploadService } from '@/domain/upload/upload.service';
 import { JwtAuthGuard } from '@/common/guards/jwt.guard';
-import { UploadFileURLDto } from '@/upload/dtos/upload-file-url.dto';
-import { UploadFileEndDto } from '@/upload/dtos/upload-file-end.dto';
-import { UploadFileAbortDto } from '@/upload/dtos/upload-file-abort.dto';
+import { UploadFileURLDto } from '@/domain/upload/dtos/upload-file-url.dto';
+import { UploadFileEndDto } from '@/domain/upload/dtos/upload-file-end.dto';
+import { UploadFileAbortDto } from '@/domain/upload/dtos/upload-file-abort.dto';
+import { FileApiService } from './file-api.service';
+import { AuthRequest } from '@/common/guards/auth-request.interface';
 import { parseImagePipe } from '@/common/pipes/parse-image.pipe';
 
 @ApiTags('files')
 @Controller('files')
 export class FileApiController {
   constructor(
+    private readonly fileApiService: FileApiService,
     private readonly uploadService: UploadService,
-    @Inject('DATA_SERVICE') private readonly client: ClientProxy,
+    @Inject('MEDIA_SERVICE') private readonly mediaService: ClientProxy,
   ) {}
 
   @Post('/image')
@@ -62,15 +62,16 @@ export class FileApiController {
   async uploadImage(
     @UploadedFile(parseImagePipe)
     file: Express.Multer.File,
-    @Req() req: any,
+    @Req() req: AuthRequest,
   ) {
-    const uploadedFileDto = await this.uploadService.uploadFile(file);
+    const uploadedImage = await this.fileApiService.uploadImage(file, req.user);
 
-    this.client.emit(
-      { cmd: 'create_image_data' },
-      { ...uploadedFileDto, userUuid: req.user.uuid },
+    this.mediaService.emit(
+      { cmd: 'process_image' },
+      { uuid: uploadedImage.uuid },
     );
-    return uploadedFileDto;
+
+    return uploadedImage;
   }
 
   @Get('/video-start')
@@ -95,7 +96,7 @@ export class FileApiController {
   })
   @UseGuards(JwtAuthGuard)
   async uploadVideo(@Query('contentType') contentType: string) {
-    return await this.uploadService.uploadVideoStart(contentType);
+    return this.fileApiService.startUploadVideo(contentType);
   }
 
   @Post('/video-url')
@@ -119,8 +120,8 @@ export class FileApiController {
     },
   })
   @UseGuards(JwtAuthGuard)
-  async getPresignedUrl(@Body() uploadFileURLDto: UploadFileURLDto) {
-    return await this.uploadService.getPresignedUrl(uploadFileURLDto);
+  async getUploadVideoUrl(@Body() dto: UploadFileURLDto) {
+    return this.fileApiService.getUploadVideoUrl(dto);
   }
 
   @Post('/video-end')
@@ -144,21 +145,21 @@ export class FileApiController {
     },
   })
   @UseGuards(JwtAuthGuard)
-  async uploadFilePartComplete(
-    @Body() uploadFilePartDto: UploadFileEndDto,
-    @Req() req,
+  async completeUploadVideo(
+    @Body() dto: UploadFileEndDto,
+    @Req() req: AuthRequest,
   ) {
-    const uploadFileEndResponsetDto =
-      await this.uploadService.uploadFilePartComplete(uploadFilePartDto);
-
-    Logger.debug(`${uploadFilePartDto.key} ended`);
-
-    this.client.emit(
-      { cmd: 'video.create' },
-      { ...uploadFileEndResponsetDto, userUuid: req.user.uuid },
+    const uploadedVideo = await this.fileApiService.completeUploadVideo(
+      dto,
+      req.user,
     );
 
-    return uploadFileEndResponsetDto;
+    this.mediaService.emit(
+      { cmd: 'video.process' },
+      { uuid: uploadedVideo.uuid },
+    );
+
+    return uploadedVideo;
   }
 
   @Post('/video-abort')
@@ -170,7 +171,7 @@ export class FileApiController {
     type: UploadFileAbortDto,
   })
   @UseGuards(JwtAuthGuard)
-  async uploadFilePartAbort(@Body() uploadFileAbortDto: UploadFileAbortDto) {
-    return await this.uploadService.uploadFilePartAbort(uploadFileAbortDto);
+  async uploadFilePartAbort(@Body() dto: UploadFileAbortDto) {
+    return await this.fileApiService.abortMultipartUpload(dto);
   }
 }
