@@ -1,9 +1,7 @@
-export class UpdateFileDto {
+export class AttachFileDto {
   readonly uuid: string;
 
   readonly source: string;
 
   readonly sourceUuid: string;
-
-  readonly thumbnailUuid?: string;
 }

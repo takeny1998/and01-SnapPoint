@@ -1,58 +1,58 @@
-import { Injectable } from '@nestjs/common';
-import { FileRepository } from '@/domain/file/file.repository';
-import { FindFilesBySourceDto } from '@/domain/file/dtos/find-files-by-source.dto';
-import { UpdateFileDto } from './dtos/update-file.dto';
-import { ProcessFileDto } from '@/domain/file/dtos/process-file.dto';
-import { CreateFileDto } from '@/domain/file/dtos/create-file.dto';
-import { FindFilesByIdDto } from './dtos/find-files-by-id.dto';
-import { File } from '@prisma/client';
+import { Inject, Injectable } from '@nestjs/common';
+import { FindAttachFileDto } from './dtos/find-attach-files.dto';
+import { AttachFileDto } from './dtos/attach-file.dto';
+import { PRISMA_SERVICE, PrismaService } from '@/common/databases/prisma.service';
 
 @Injectable()
 export class FileService {
-  constructor(private readonly repository: FileRepository) {}
+  constructor(@Inject(PRISMA_SERVICE) private readonly prisma: PrismaService) {}
 
-  async createFile(dto: CreateFileDto) {
-    return this.repository.createFile(dto);
+  async findFilesByIds(uuids: string[]) {
+    return this.prisma.file.findMany({
+      where: { uuid: { in: uuids }, isDeleted: false },
+    });
   }
 
-  async processFile(dto: ProcessFileDto) {
-    const { uuid } = dto;
-    return this.repository.updateFile({ where: { uuid }, data: { isProcessed: true } });
+  async findAttachFiles(dto: FindAttachFileDto) {
+    const { source, sourceUuids } = dto;
+    return this.prisma.file.findMany({
+      where: { source, sourceUuid: { in: sourceUuids }, isDeleted: false },
+    });
   }
 
-  async findFilesById(dtos: FindFilesByIdDto[]) {
-    return this.repository.findFiles({ where: { OR: dtos } });
-  }
-
-  async findFilesBySources(source: string, dtos: FindFilesBySourceDto[]) {
-    const conditions = dtos.map((dto) => ({ sourceUuid: dto.uuid }));
-    return this.repository.findFiles({ where: { OR: conditions, AND: { source } } });
-  }
-
-  async attachFiles(dtos: UpdateFileDto[]) {
-    return Promise.all(
-      dtos.map((file) => {
-        const { uuid, source, sourceUuid, thumbnailUuid } = file;
-        return this.repository.updateFile({ where: { uuid }, data: { source, sourceUuid, thumbnailUuid } });
+  async attachFiles(dtos: AttachFileDto[]) {
+    const attachPromises = dtos.map(({ uuid, source, sourceUuid }) =>
+      this.prisma.file.update({
+        where: { uuid },
+        data: { source, sourceUuid },
       }),
     );
+
+    return Promise.all(attachPromises);
+  }
+  async deleteAttachFiles(sourceUuids: string[]) {
+    const blocks = await this.prisma.file.findMany({
+      where: { sourceUuid: { in: sourceUuids }, isDeleted: false },
+    });
+
+    await this.prisma.file.updateMany({
+      where: { sourceUuid: { in: sourceUuids }, isDeleted: false },
+      data: { isDeleted: true },
+    });
+
+    return blocks;
   }
 
-  async modifyFiles(dtos: UpdateFileDto[]) {
-    await this.repository.deleteFiles({ OR: dtos });
-    return Promise.all(
-      dtos.map((dto) => this.repository.updateFile({ where: { uuid: dto.uuid }, data: { ...dto, isDeleted: false } })),
-    );
-  }
+  async deleteFiles(uuids: string[]) {
+    await this.prisma.file.updateMany({
+      where: { uuid: { in: uuids } },
+      data: { isDeleted: true },
+    });
 
-  async deleteFilesBySources(source: string, dtos: FindFilesBySourceDto[]) {
-    const conditions = dtos.map((dto) => ({ sourceUuid: dto.uuid }));
-    const files = await this.repository.findFiles({ where: { OR: conditions, AND: { source } } });
-    this.repository.deleteFiles({ OR: conditions });
-    return files;
-  }
+    const blocks = await this.prisma.file.findMany({
+      where: { uuid: { in: uuids }, isDeleted: true },
+    });
 
-  filterNotProcessedFiles(files: File[]) {
-    return files.filter((file) => file.isProcessed === false);
+    return blocks;
   }
 }
