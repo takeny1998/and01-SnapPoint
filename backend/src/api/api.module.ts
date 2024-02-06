@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { FileApiController } from '@/api/file-api/file-api.controller';
-import { FileApiService } from '@/api/file-api/file-api.service';
 import { PostApiController } from '@/api/post-api/post-api.controller';
 import { PostApiService } from '@/api/post-api/post-api.service';
 import { ValidationService } from './validation/validation.service';
@@ -17,32 +15,14 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BlockModule } from '@/domain/block/block.module';
 import { HttpModule } from '@nestjs/axios';
-import { FileModule } from '@/domain/file/file.module';
 import { SummarizationService } from './summarization/summarization.service';
 import { SummarizationController } from './summarization/summarizationi.controller';
 import { UtilityModule } from '@/common/utility/utility.module';
 import { TokenModule } from '@/domain/token/token.module';
+import { FileModule } from '@/domain/file/file.module';
 
 @Module({
   imports: [
-    ClientsModule.registerAsync([
-      {
-        name: 'MEDIA_SERVICE',
-        imports: [ConfigModule],
-        useFactory: async (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [configService.getOrThrow<string>('RMQ_HOST')],
-            queue: configService.getOrThrow<string>('RMQ_MEDIA_QUEUE'),
-            queueOptions: {
-              durable: true,
-            },
-          },
-        }),
-        inject: [ConfigService],
-      },
-    ]),
-
     ClientsModule.registerAsync([
       {
         name: 'SUMMARY_SERVICE',
@@ -60,6 +40,7 @@ import { TokenModule } from '@/domain/token/token.module';
         inject: [ConfigService],
       },
     ]),
+
     PassportModule.register({
       defaultStrategy: 'jwt',
       session: false,
@@ -76,13 +57,12 @@ import { TokenModule } from '@/domain/token/token.module';
     RedisCacheModule,
     BlockModule,
     HttpModule,
-    FileModule,
     UtilityModule,
     TokenModule,
+    FileModule,
   ],
-  controllers: [FileApiController, PostApiController, AuthController, SummarizationController],
+  controllers: [PostApiController, AuthController, SummarizationController],
   providers: [
-    FileApiService,
     PostApiService,
     ValidationService,
     PostService,
