@@ -10,7 +10,6 @@ import { RedisCacheService } from '@/common/redis/redis-cache.service';
 import { mockDeep } from 'jest-mock-extended';
 import { BlockRepository } from '@/domain/block/block.repository';
 import { HttpService } from '@nestjs/axios';
-import { FileRepository } from '@/domain/file/file.repository';
 import { RedisManager } from '@liaoliaots/nestjs-redis';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '@/domain/user/user.service';
@@ -36,7 +35,6 @@ describe('PostApiController', () => {
         RedisManager,
         BlockRepository,
         HttpService,
-        FileRepository,
         ConfigService,
         UserService,
         {

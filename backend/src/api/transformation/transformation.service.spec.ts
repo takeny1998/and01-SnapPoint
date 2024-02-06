@@ -9,6 +9,8 @@ import {
 } from './mocks/mock.dto.transform';
 import { mockBlocks, mockFiles, mockPost, mockUserPayload } from './mocks/mock.entity.transform';
 import { UtilityService } from '@/common/utility/utility.service';
+import { FileService } from '@/domain/file/file.service';
+import { mockDeep } from 'jest-mock-extended';
 
 describe('TransformationService', () => {
   let service: TransformationService;
@@ -17,8 +19,11 @@ describe('TransformationService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TransformationService, UtilityService],
-    }).compile();
+      providers: [TransformationService, UtilityService, FileService],
+    })
+      .overrideProvider(FileService)
+      .useValue(mockDeep<FileService>())
+      .compile();
 
     service = module.get<TransformationService>(TransformationService);
   });
