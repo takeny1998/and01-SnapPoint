@@ -1,7 +1,7 @@
-import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { FileService } from '@/domain/file/file.service';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PostService } from '@/domain/post/post.service';
 import { BlockService } from '@/domain/block/block.service';
-import { FileService } from '@/domain/file/file.service';
 import { ValidationService } from '@/api/validation/validation.service';
 import { PostDto } from '@/domain/post/dtos/post.dto';
 import { Block, File, Post } from '@prisma/client';
@@ -9,13 +9,10 @@ import { TransformationService } from '@/api/transformation/transformation.servi
 import { FindNearbyPostQuery } from './dtos/find-nearby-post.query.dto';
 import { RedisCacheService } from '@/common/redis/redis-cache.service';
 import { FindBlocksByPostDto } from '@/domain/block/dtos/find-blocks-by-post.dto';
-import { FindFilesBySourceDto } from '@/domain/file/dtos/find-files-by-source.dto';
 import { UserService } from '@/domain/user/user.service';
 import { Transactional } from '@takeny1998/nestjs-prisma-transactional';
 import { WritePostDto } from './dtos/post/write-post.dto';
 import { ModifyPostDto } from './dtos/post/modify-post.dto';
-import { ClientProxy } from '@nestjs/microservices';
-import { SummaryPostDto } from '../summarization/dtos/summary-post.dto';
 import { UserPayload } from '@/common/guards/user-payload.interface';
 
 @Injectable()
@@ -23,12 +20,11 @@ export class PostApiService {
   constructor(
     private readonly postService: PostService,
     private readonly blockService: BlockService,
-    private readonly fileService: FileService,
     private readonly userService: UserService,
     private readonly validation: ValidationService,
     private readonly transform: TransformationService,
     private readonly redisService: RedisCacheService,
-    @Inject('SUMMARY_SERVICE') private readonly summaryService: ClientProxy,
+    private readonly fileService: FileService,
   ) {}
 
   async findEntireBlocksWithPost(posts: Post[]): Promise<Block[][]> {
@@ -79,12 +75,9 @@ export class PostApiService {
       keys,
       (value) => JSON.parse(value),
       async (keys) => {
-        const dtos: FindFilesBySourceDto[] = keys.map((key) => {
-          const uuid = key.substring('file:'.length);
-          return { uuid: uuid };
-        });
+        const sourceUuids = keys.map((key) => key.substring('file:'.length));
 
-        const findFiles = await this.fileService.findFilesBySources('block', dtos);
+        const findFiles = await this.fileService.findAttachFiles({ source: 'block', sourceUuids });
 
         const fileByUuid = {};
 
@@ -99,14 +92,10 @@ export class PostApiService {
           fileByUuid[sourceUuid].push(file);
         });
 
-        const resultArray = dtos.map((dto) => {
-          if (!fileByUuid[dto.uuid]) {
-            return [];
-          }
-          return fileByUuid[dto.uuid];
+        return sourceUuids.map((sourceUuid) => {
+          if (!fileByUuid[sourceUuid]) return [];
+          return fileByUuid[sourceUuid];
         });
-
-        return resultArray;
       },
     );
 
@@ -161,9 +150,10 @@ export class PostApiService {
 
     // 2. 게시글과 연관된 블록들을 찾는다.
     const blocks = await this.blockService.findBlocksByPost({ postUuid: post.uuid });
-    // 3. 블록들과 연관된 파일들을 찾는다.
-    const files = await this.fileService.findFilesBySources('block', blocks);
 
+    // 3. 블록들과 연관된 파일들을 찾는다.
+    const blockUuids = blocks.map(({ uuid }) => uuid);
+    const files = await this.fileService.findAttachFiles({ source: 'block', sourceUuids: blockUuids });
     return this.transform.assemblePost(post, user, blocks, files);
   }
 
@@ -179,7 +169,6 @@ export class PostApiService {
       this.validation.validateFiles(files, user.uuid),
     ]);
 
-    // 게시글, 블록, 파일 생성을 비동기 병렬 처리한다.
     const [createdPost, createdBlocks, createdFiles] = await Promise.all([
       this.postService.createPost(user.uuid, post),
       this.blockService.createBlocks(post.uuid, blocks),
@@ -191,7 +180,7 @@ export class PostApiService {
     const deleteCacheKeys = blocks.map((block) => `file:${block.uuid}`);
     await this.redisService.del(deleteCacheKeys);
 
-    this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: createdPost, blocks: createdBlocks });
+    // this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: createdPost, blocks: createdBlocks });
 
     return this.transform.assemblePost(createdPost, user, createdBlocks, createdFiles);
   }
@@ -201,15 +190,23 @@ export class PostApiService {
     const decomposedPostDto = this.transform.decomposePostData(postDto, uuid);
     const { post, blocks, files } = decomposedPostDto;
 
-    await this.validation.validatePost({ uuid, userUuid: user.uuid });
+    await Promise.all([
+      this.validation.validatePost({ uuid, userUuid: user.uuid }),
+      this.validation.validateModifyBlocks(uuid, blocks, files),
+      this.validation.validateFiles(files, user.uuid),
+    ]);
 
-    await this.validation.validateModifyBlocks(uuid, blocks, files);
+    const { attachFiles, deleteFileUuids } = await this.transform.separateFiles(blocks, files);
 
-    const [updatedPost, updatedBlocks, updatedFiles] = await Promise.all([
+    const [updatedPost, updatedBlocks] = await Promise.all([
       this.postService.updatePost({ where: { uuid }, data: post }),
       this.blockService.modifyBlocks(uuid, blocks),
-      this.fileService.modifyFiles(files),
+      this.fileService.attachFiles(attachFiles),
+      this.fileService.deleteFiles(deleteFileUuids),
     ]);
+
+    const findFileDto = { source: 'block', sourceUuids: blocks.map(({ uuid }) => uuid) };
+    const updatedFiles = await this.fileService.findAttachFiles(findFileDto);
 
     await this.redisService.del(`file:${uuid}`);
     await this.redisService.del(`block:${uuid}`);
@@ -217,7 +214,7 @@ export class PostApiService {
     await this.redisService.del(deleteCacheKeys);
 
     // 게시글 내용을 요약한다.
-    this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: updatedPost, blocks: updatedBlocks });
+    // this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: updatedPost, blocks: updatedBlocks });
 
     return this.transform.assemblePost(updatedPost, user, updatedBlocks, updatedFiles);
   }
@@ -228,7 +225,9 @@ export class PostApiService {
 
     const deletedPost = await this.postService.deletePost({ uuid });
     const deletedBlocks = await this.blockService.deleteBlocksByPost(uuid);
-    const deletedFiles = await this.fileService.deleteFilesBySources('block', deletedBlocks);
+
+    const blockUuids = deletedBlocks.map(({ uuid }) => uuid);
+    const deletedFiles = await this.fileService.deleteAttachFiles(blockUuids);
 
     const willDeleteFileKeys = deletedBlocks.map(({ uuid }) => `file:${uuid}`);
     await Promise.all([this.redisService.del(`block:${uuid}`), this.redisService.del(willDeleteFileKeys)]);

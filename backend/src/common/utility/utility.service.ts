@@ -22,6 +22,20 @@ export class UtilityService {
     return (Math.sqrt(x * x + y * y) * R) / 1000;
   }
 
+  getDifferenceByKey<T extends object>(arr1: T[], arr2: T[], key: keyof T): T[] {
+    const keysInArr2 = new Set(arr2.map((item) => item[key]));
+    return arr1.filter((item) => !keysInArr2.has(item[key]));
+  }
+
+  toSetFromArray<T, V>(items: T[], extractValueFn: (item: T) => V): Set<V> {
+    const set = new Set<V>();
+
+    items.forEach((item) => {
+      set.add(extractValueFn(item));
+    });
+    return set;
+  }
+
   toMapFromArray<K, V>(items: V[], extractKeyFn: (item: V) => K): Map<K, V[]> {
     const map = new Map<K, V[]>();
     items.forEach((item) => {

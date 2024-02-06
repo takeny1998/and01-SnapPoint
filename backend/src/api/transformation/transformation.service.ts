@@ -15,10 +15,15 @@ import { PostDto } from '@/domain/post/dtos/post.dto';
 import { Post, Block, File } from '@prisma/client';
 import { FileDto } from '../post-api/dtos/file.dto';
 import { UtilityService } from '@/common/utility/utility.service';
+import { SeparatedFilesDto } from '../validation/dtos/separated-files.dto';
+import { FileService } from '@/domain/file/file.service';
 
 @Injectable()
 export class TransformationService {
-  constructor(private readonly utils: UtilityService) {}
+  constructor(
+    private readonly utils: UtilityService,
+    private readonly fileService: FileService,
+  ) {}
 
   private parseLatLon(latLon: string) {
     const [lat, lon] = latLon.split(',').map((s) => parseFloat(s.trim()));
@@ -98,6 +103,17 @@ export class TransformationService {
     });
 
     return plainToInstance(DecomposedPostDataDto, { post: postDto, blocks: blockDtos, files: fileDtos });
+  }
+
+  async separateFiles(blockDtos: DecomposedBlockDto[], fileDtos: DecomposedFileDto[]): Promise<SeparatedFilesDto> {
+    const blockUuids = blockDtos.map(({ uuid }) => uuid);
+
+    const existFiles = await this.fileService.findAttachFiles({ source: 'block', sourceUuids: blockUuids });
+
+    const attachFiles = this.utils.getDifferenceByKey<DecomposedFileDto | any>(fileDtos, existFiles, 'uuid');
+    const deleteFiles = this.utils.getDifferenceByKey<DecomposedFileDto | any>(existFiles, fileDtos, 'uuid');
+
+    return { attachFiles, deleteFileUuids: deleteFiles.map(({ uuid }) => uuid) };
   }
 
   /**
