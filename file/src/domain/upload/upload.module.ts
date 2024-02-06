@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { BucketService } from '@/upload/storages/bucket.service';
-import { UploadService } from '@/upload/upload.service';
+import { BucketService } from '@/domain/upload/storages/bucket.service';
+import { UploadService } from '@/domain/upload/upload.service';
 import { ConfigService } from '@nestjs/config';
 
 @Module({
