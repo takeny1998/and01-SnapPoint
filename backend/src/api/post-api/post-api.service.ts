@@ -180,8 +180,6 @@ export class PostApiService {
     const deleteCacheKeys = blocks.map((block) => `file:${block.uuid}`);
     await this.redisService.del(deleteCacheKeys);
 
-    // this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: createdPost, blocks: createdBlocks });
-
     return this.transform.assemblePost(createdPost, user, createdBlocks, createdFiles);
   }
 
@@ -212,9 +210,6 @@ export class PostApiService {
     await this.redisService.del(`block:${uuid}`);
     const deleteCacheKeys = blocks.map((block) => `file:${block.uuid}`);
     await this.redisService.del(deleteCacheKeys);
-
-    // 게시글 내용을 요약한다.
-    // this.summaryService.emit<SummaryPostDto>({ cmd: 'summary.post' }, { post: updatedPost, blocks: updatedBlocks });
 
     return this.transform.assemblePost(updatedPost, user, updatedBlocks, updatedFiles);
   }

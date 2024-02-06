@@ -1,9 +1,10 @@
 import { PostService } from './../../domain/post/post.service';
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom, map } from 'rxjs';
 import { SummaryPostDto } from './dtos/summary-post.dto';
+import { BlockService } from '@/domain/block/block.service';
 
 @Injectable()
 export class SummarizationService {
@@ -15,13 +16,22 @@ export class SummarizationService {
   private readonly summaryClientSecret = this.configService.getOrThrow('NCP_AI_CLIENT_SECRET');
 
   constructor(
-    private httpService: HttpService,
-    private configService: ConfigService,
-    private postService: PostService,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+    private readonly postService: PostService,
+    private readonly blockService: BlockService,
   ) {}
 
-  async summarizePost({ post, blocks }: SummaryPostDto) {
-    const { uuid, title } = post;
+  async summarizePost({ uuid }: SummaryPostDto) {
+    const [post, blocks] = await Promise.all([
+      this.postService.findPost({ uuid }),
+      this.blockService.findBlocksByPost({ postUuid: uuid }),
+    ]);
+
+    if (!post) {
+      throw new NotFoundException(`게시글 ${uuid}를 찾을 수 없습니다.`);
+    }
+
     const content = this.prepareContent(blocks);
 
     // Summary AI의 동작 조건에 맞지 않는 경우, 첫 번째 텍스트 블록 내용을 저장한다.
@@ -33,7 +43,7 @@ export class SummarizationService {
     }
 
     try {
-      const { summary } = await this.summarizeContent(title, content);
+      const { summary } = await this.summarizeContent(post.title, content);
       this.postService.updatePost({
         where: { uuid },
         data: { summary },

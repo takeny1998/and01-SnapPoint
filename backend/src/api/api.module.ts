@@ -16,16 +16,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BlockModule } from '@/domain/block/block.module';
 import { HttpModule } from '@nestjs/axios';
 import { SummarizationService } from './summarization/summarization.service';
-import { SummarizationController } from './summarization/summarizationi.controller';
 import { UtilityModule } from '@/common/utility/utility.module';
 import { TokenModule } from '@/domain/token/token.module';
 import { FileModule } from '@/domain/file/file.module';
+import { SummarizationListner } from './summarization/summarization.listener';
 
 @Module({
   imports: [
     ClientsModule.registerAsync([
       {
-        name: 'SUMMARY_SERVICE',
+        name: 'SUMMARY_CLIENT',
         imports: [ConfigModule],
         useFactory: async (configService: ConfigService) => ({
           transport: Transport.RMQ,
@@ -61,7 +61,7 @@ import { FileModule } from '@/domain/file/file.module';
     TokenModule,
     FileModule,
   ],
-  controllers: [PostApiController, AuthController, SummarizationController],
+  controllers: [PostApiController, AuthController, SummarizationListner],
   providers: [
     PostApiService,
     ValidationService,

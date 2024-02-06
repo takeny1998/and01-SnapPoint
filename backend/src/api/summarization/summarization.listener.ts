@@ -5,7 +5,7 @@ import { Ctx, MessagePattern, Payload, RmqContext } from '@nestjs/microservices'
 import { SummaryPostDto } from './dtos/summary-post.dto';
 
 @Controller('summary')
-export class SummarizationController {
+export class SummarizationListner {
   constructor(private readonly summarizationService: SummarizationService) {}
 
   @MessagePattern({ cmd: 'summary.post' })

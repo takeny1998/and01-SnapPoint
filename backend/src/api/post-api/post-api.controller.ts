@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { PostApiService } from '@/api/post-api/post-api.service';
 import { NoAuth } from '@/common/decorator/no-auth.decorator';
 import { PostDto } from '@/domain/post/dtos/post.dto';
@@ -15,10 +15,14 @@ import { ReadPostQuery } from './dtos/read-post.query.dto';
 import { ModifyPostDto } from './dtos/post/modify-post.dto';
 import { WritePostDto } from './dtos/post/write-post.dto';
 import { AuthRequest } from '@/common/guards/auth-request.interface';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Controller('posts')
 export class PostApiController {
-  constructor(private readonly postApiService: PostApiService) {}
+  constructor(
+    private readonly postApiService: PostApiService,
+    @Inject('SUMMARY_CLIENT') private readonly summaryClient: ClientProxy,
+  ) {}
 
   @NoAuth()
   @Get('/:uuid')
@@ -56,8 +60,10 @@ export class PostApiController {
     type: PostDto,
   })
   @ApiNotFoundResponse({ description: '업로드한 파일 정보를 찾을 수 없습니다.' })
-  writePost(@Body() postDto: WritePostDto, @Req() request: AuthRequest) {
-    return this.postApiService.writePost(postDto, request.user);
+  async writePost(@Body() postDto: WritePostDto, @Req() request: AuthRequest) {
+    const post = await this.postApiService.writePost(postDto, request.user);
+    this.summaryClient.emit({ cmd: 'summary.post' }, { uuid: post.uuid });
+    return post;
   }
 
   @Put('/:uuid')
@@ -67,8 +73,10 @@ export class PostApiController {
     description: '작성한 게시글의 내용 및 블록 정보를 업데이트한다.',
     type: PostDto,
   })
-  modifyPost(@Param('uuid') uuid: string, @Body() postDto: ModifyPostDto, @Req() request: AuthRequest) {
-    return this.postApiService.modifyPost(uuid, postDto, request.user);
+  async modifyPost(@Param('uuid') uuid: string, @Body() postDto: ModifyPostDto, @Req() request: AuthRequest) {
+    const post = await this.postApiService.modifyPost(uuid, postDto, request.user);
+    this.summaryClient.emit({ cmd: 'summary.post' }, { uuid: post.uuid });
+    return post;
   }
 
   @Delete('/:uuid')
