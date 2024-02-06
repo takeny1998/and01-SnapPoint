@@ -29,6 +29,7 @@ import { JwtAuthGuard } from '@/common/guards/jwt.guard';
 import { UploadFileURLDto } from '@/upload/dtos/upload-file-url.dto';
 import { UploadFileEndDto } from '@/upload/dtos/upload-file-end.dto';
 import { UploadFileAbortDto } from '@/upload/dtos/upload-file-abort.dto';
+import { parseImagePipe } from '@/common/pipes/parse-image.pipe';
 
 @ApiTags('files')
 @Controller('files')
@@ -59,16 +60,7 @@ export class FileApiController {
   })
   @UseGuards(JwtAuthGuard)
   async uploadImage(
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addMaxSizeValidator({
-          maxSize: 1024 * 1024 * 2,
-        })
-        .addFileTypeValidator({ fileType: 'image/webp' })
-        .build({
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        }),
-    )
+    @UploadedFile(parseImagePipe)
     file: Express.Multer.File,
     @Req() req: any,
   ) {
