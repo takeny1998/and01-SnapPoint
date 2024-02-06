@@ -1,5 +1,4 @@
 import { PostService } from '@/domain/post/post.service';
-import { FileService } from '@/domain/file/file.service';
 import {
   BadRequestException,
   ConflictException,
@@ -14,6 +13,7 @@ import { ValidatePostDto } from './dtos/validate-post.dto';
 import { UtilityService } from '@/common/utility/utility.service';
 import { BlockService } from '@/domain/block/block.service';
 import { Block } from '@prisma/client';
+import { FileService } from '@/domain/file/file.service';
 
 @Injectable()
 export class ValidationService {
@@ -39,25 +39,25 @@ export class ValidationService {
   }
 
   async validateFiles(fileDtos: ValidateFileDto[], userUuid: string) {
-    const fileWhereInputs = fileDtos.map((fileDto) => ({ uuid: fileDto.uuid }));
-    const existFiles = await this.fileService.findFilesById(fileWhereInputs);
+    const fileUuids = fileDtos.map(({ uuid }) => uuid);
 
-    const existFileUuidSet = new Set(existFiles.map((existFile) => existFile.uuid));
+    const existFiles = await this.fileService.findFilesByIds(fileUuids);
+    const existFileMap = this.utils.toUniqueMapFromArray<string, any>(existFiles, (file) => file.uuid);
 
     fileDtos.forEach((fileDto) => {
-      if (!existFileUuidSet.has(fileDto.uuid)) {
+      const existFile = existFileMap.get(fileDto.uuid);
+
+      if (!existFile) {
         throw new BadRequestException(`The file with uuid ${fileDto.uuid} is invalid or not exist anymore.`);
       }
-    });
 
-    existFiles.forEach((existFile) => {
       if (existFile.userUuid !== userUuid) {
         throw new ForbiddenException(
           `Could not access the file with uuid ${existFile.uuid}. please check your permission.`,
         );
       }
 
-      if (existFile.sourceUuid) {
+      if (existFile.sourceUuid !== null && existFile.sourceUuid !== fileDto.sourceUuid) {
         throw new ConflictException(`The file with uuid ${existFile.uuid} is already attached with other resource.`);
       }
     });
